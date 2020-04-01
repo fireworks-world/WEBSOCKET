@@ -5,7 +5,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Switch;
 import android.widget.TextView;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -15,31 +19,29 @@ import okhttp3.WebSocketListener;
 import okio.ByteString;
 
 public class MainActivity extends AppCompatActivity {
-    private TextView output;
+    private TextView output ,btcprice,ethprice;
     private OkHttpClient client;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         client = new OkHttpClient();
+        btcprice = findViewById(R.id.btcPrice);
+        ethprice = findViewById(R.id.ethPrice);
         start();
     }
-
+    //"wss://stream.binance.com:9443/ws/bnbbtc@kline_1m"
+    //wss://stream.binance.com:9443/ws/ltcbtc@depth/xrpbtc@depth/btgbtc@depth
     private void start() {
-        Request request = new Request.Builder().url("wss://stream.binance.com:9443/ws/bnbbtc@kline_1m").build();
+        Request request = new Request.Builder().url("wss://stream.binance.com:9443/ws/btcusdt@miniTicker/ethusdt@miniTicker").build();
         EchoWebSocketListener listener = new EchoWebSocketListener();
         WebSocket ws = client.newWebSocket(request, listener);
-
+        output=findViewById(R.id.tradedata);
+        btcprice=findViewById(R.id.btcPrice);
+        ethprice=findViewById(R.id.ethPrice);
         client.dispatcher().executorService().shutdown();
     }
-    private void output(final String txt) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                output.setText(output.getText().toString() + "\n\n" + txt);
-            }
-        });
-    }
+
 
     public void connect(View view) {
         start();
@@ -56,11 +58,24 @@ public class MainActivity extends AppCompatActivity {
         }
         @Override
         public void onMessage(WebSocket webSocket, String text) {
+//            String json = text;
             Log.d("data",text);
+            try {
+//                JSONObject obj = new JSONObject(json);
+//                Log.d("data",obj.getString("s"));
+//                String symbol=obj.getString("s");
+               output(new JSONObject(text));
+//
+            } catch (Throwable t) {
+                Log.e("My App", t.getMessage());
+            }
+//            output("Receiving : " + text);
+
         }
         @Override
         public void onMessage(WebSocket webSocket, ByteString bytes) {
             Log.d("bytes",bytes.toString());
+//            output("Receiving bytes : " + bytes.hex());
         }
         @Override
         public void onClosing(WebSocket webSocket, int code, String reason) {
@@ -70,6 +85,34 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onFailure(WebSocket webSocket, Throwable t, Response response) {
             Log.d("Error",t.getMessage());
+        }
+        private void output(final JSONObject obj) {
+            runOnUiThread(new Runnable() {
+
+                @Override
+                public void run() {
+                    try {
+                        switch(obj.getString("s")) {
+                            case "BTCUSDT":
+                                btcprice.setText("PRICE : "+obj.getString("c"));
+                                break;
+                            case "ETHUSDT":
+                                ethprice.setText("PRICE : "+obj.getString("c"));
+                                break;
+                            default:
+
+                                break;
+                        }
+
+
+                    } catch (Exception e) {
+                        Log.d("TAG", "run: "+e.getMessage());
+                    }
+
+                    //output.setText(txt);
+
+                }
+            });
         }
     }
 }
